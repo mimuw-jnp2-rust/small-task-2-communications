@@ -8,6 +8,7 @@ enum CommsError {
     UnexpectedHandshake(String),
     ConnectionExists(String),
     ConnectionClosed(String),
+    ConnectionNotFound(String),
 }
 
 #[derive(Clone, Copy)]
@@ -82,7 +83,7 @@ impl Client {
         todo!()
     }
 
-    // Returns the number of connections with the `Halted` status.
+    // Returns the number of closed connections
     fn count_closed(&self) -> usize {
         todo!()
     }
@@ -109,10 +110,10 @@ impl Server {
     }
 
     // Consumes the message.
-    // Server should start reporting errors when it has received
-    // a number of POST requests equal to its limit.
+    // Server should report a ServerLimitReached error when it has received
+    // a POST request above its limit..
     // Upon receiving a GET request, the server should respond
-    // with a string containing the number of received POST requests.
+    // with the GetCount response containing the number of received POST requests.
     fn receive(&mut self, msg: Message) -> CommsResult<Response> {
         eprintln!("{} received:\n{}", self.name, msg.content());
 
@@ -212,10 +213,18 @@ mod tests {
         let error_msg = result.unwrap_err();
         assert_eq!(error_msg, CommsError::ServerLimitReached(String::from("TestServer")));
 
+        // The connection to the server should have been closed
+        assert!(!client.is_open("197.0.0.1"));
+
         // No more messages can be sent through a halted connection.
         let result = client.send("197.0.0.1", Message { msg_type: MessageType::Post, load: String::from("Maybe this time?") });
         let error_msg = result.unwrap_err();
         assert_eq!(error_msg, CommsError::ConnectionClosed(String::from("197.0.0.1")));
+
+        // Sending through a nonexistent connection should give an error
+        let result = client.send("10.0.0.1", Message { msg_type: MessageType::Post, load: String::new() });
+        let error_msg = result.unwrap_err();
+        assert_eq!(error_msg, CommsError::ConnectionNotFound(String::from("10.0.0.1")));
 
         Ok(())
     }
