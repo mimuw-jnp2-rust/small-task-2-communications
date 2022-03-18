@@ -11,6 +11,7 @@ enum CommsError {
     ConnectionNotFound(String),
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 enum MessageType {
     Handshake,
@@ -82,11 +83,13 @@ impl Client {
 
     // Returns whether the connection to `addr` exists and has
     // the `Open` status.
+    #[allow(dead_code)]
     fn is_open(&self, addr: &str) -> bool {
         todo!()
     }
 
     // Returns the number of closed connections
+    #[allow(dead_code)]
     fn count_closed(&self) -> usize {
         todo!()
     }
@@ -98,6 +101,7 @@ enum Response {
     PostReceived,
     GetCount(u32),
 }
+
 
 #[derive(Clone)]
 struct Server {
