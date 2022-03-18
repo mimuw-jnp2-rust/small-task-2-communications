@@ -58,7 +58,10 @@ struct Client {
 
 impl Client {
     fn new(ip: String) -> Client {
-        Client { ip, connections: HashMap::new() }
+        Client {
+            ip,
+            connections: HashMap::new(),
+        }
     }
 
     // Attempts opening a new connection to the given address.
@@ -125,7 +128,13 @@ fn main() -> CommsResult<()> {
     let mut client = Client::new(String::from("10.0.0.1"));
 
     client.open("197.0.0.1", Server::new(String::from("TestServer"), 2))?;
-    client.send("197.0.0.1", Message { msg_type: MessageType::Post, load: String::from("Hello from the other side!") })?;
+    client.send(
+        "197.0.0.1",
+        Message {
+            msg_type: MessageType::Post,
+            load: String::from("Hello from the other side!"),
+        },
+    )?;
 
     Ok(())
 }
@@ -147,30 +156,51 @@ mod tests {
         assert_eq!(server.connected_client, None);
 
         // handshake
-        let response = server.receive(Message { msg_type: MessageType::Handshake, load: String::from("localhost") })?;
+        let response = server.receive(Message {
+            msg_type: MessageType::Handshake,
+            load: String::from("localhost"),
+        })?;
         assert_eq!(response, Response::HandshakeReceived);
         assert_eq!(server.post_count, 0);
         assert_eq!(server.connected_client, Some(String::from("localhost")));
 
         // another handshake should be rejected
-        let result = server.receive(Message { msg_type: MessageType::Handshake, load: String::from("localhost") });
+        let result = server.receive(Message {
+            msg_type: MessageType::Handshake,
+            load: String::from("localhost"),
+        });
         let error_msg = result.unwrap_err();
-        assert_eq!(error_msg, CommsError::UnexpectedHandshake(String::from("TestServer")));
+        assert_eq!(
+            error_msg,
+            CommsError::UnexpectedHandshake(String::from("TestServer"))
+        );
 
         // GET
-        let response = server.receive(Message { msg_type: MessageType::GetCount, load: String::new() })?;
+        let response = server.receive(Message {
+            msg_type: MessageType::GetCount,
+            load: String::new(),
+        })?;
         assert_eq!(response, Response::GetCount(0));
         assert_eq!(server.post_count, 0);
 
         // POST
-        let response = server.receive(Message { msg_type: MessageType::Post, load: String::from("The tale begins...") })?;
+        let response = server.receive(Message {
+            msg_type: MessageType::Post,
+            load: String::from("The tale begins..."),
+        })?;
         assert_eq!(response, Response::PostReceived);
         assert_eq!(server.post_count, 1);
 
         // another POST should cause a server error
-        let result = server.receive(Message { msg_type: MessageType::Post, load: String::from("...and quickly ends.") });
+        let result = server.receive(Message {
+            msg_type: MessageType::Post,
+            load: String::from("...and quickly ends."),
+        });
         let error_msg = result.unwrap_err();
-        assert_eq!(error_msg, CommsError::ServerLimitReached(String::from("TestServer")));
+        assert_eq!(
+            error_msg,
+            CommsError::ServerLimitReached(String::from("TestServer"))
+        );
 
         Ok(())
     }
@@ -179,19 +209,26 @@ mod tests {
     fn test_client_open() -> CommsResult<()> {
         let mut client = Client::new(String::from("localhost"));
 
-        assert!(client.open("197.0.0.1", Server::new(String::from("TestServer"), 2)).is_ok());
+        assert!(client
+            .open("197.0.0.1", Server::new(String::from("TestServer"), 2))
+            .is_ok());
         assert!(client.is_open("197.0.0.1"));
 
         let conn = client.connections.get("197.0.0.1").unwrap();
         match conn {
-            &Connection::Open(ref server) => assert_eq!(server.connected_client, Some("localhost".to_string())),
-            _ => panic!()
+            &Connection::Open(ref server) => {
+                assert_eq!(server.connected_client, Some("localhost".to_string()))
+            }
+            _ => panic!(),
         }
 
         // opening an already open connection should give an error
         let result = client.open("197.0.0.1", Server::new(String::from("TestServer2"), 100));
         let error_msg = result.unwrap_err();
-        assert_eq!(error_msg, CommsError::ConnectionExists(String::from("197.0.0.1")));
+        assert_eq!(
+            error_msg,
+            CommsError::ConnectionExists(String::from("197.0.0.1"))
+        );
 
         Ok(())
     }
@@ -202,45 +239,106 @@ mod tests {
 
         client.open("197.0.0.1", Server::new(String::from("TestServer"), 1))?;
 
-        let response = client.send("197.0.0.1", Message { msg_type: MessageType::GetCount, load: String::new() })?;
+        let response = client.send(
+            "197.0.0.1",
+            Message {
+                msg_type: MessageType::GetCount,
+                load: String::new(),
+            },
+        )?;
         assert_eq!(response, Response::GetCount(0));
 
-        let response = client.send("197.0.0.1", Message { msg_type: MessageType::Post, load: String::from("Another tale") })?;
+        let response = client.send(
+            "197.0.0.1",
+            Message {
+                msg_type: MessageType::Post,
+                load: String::from("Another tale"),
+            },
+        )?;
         assert_eq!(response, Response::PostReceived);
 
         // Server should have reached its limit. Another POST should halt the connection and give an error.
-        let result = client.send("197.0.0.1", Message { msg_type: MessageType::Post, load: String::from("Another abrupt end") });
+        let result = client.send(
+            "197.0.0.1",
+            Message {
+                msg_type: MessageType::Post,
+                load: String::from("Another abrupt end"),
+            },
+        );
         let error_msg = result.unwrap_err();
-        assert_eq!(error_msg, CommsError::ServerLimitReached(String::from("TestServer")));
+        assert_eq!(
+            error_msg,
+            CommsError::ServerLimitReached(String::from("TestServer"))
+        );
 
         // The connection to the server should have been closed
         assert!(!client.is_open("197.0.0.1"));
 
         // No more messages can be sent through a halted connection.
-        let result = client.send("197.0.0.1", Message { msg_type: MessageType::Post, load: String::from("Maybe this time?") });
+        let result = client.send(
+            "197.0.0.1",
+            Message {
+                msg_type: MessageType::Post,
+                load: String::from("Maybe this time?"),
+            },
+        );
         let error_msg = result.unwrap_err();
-        assert_eq!(error_msg, CommsError::ConnectionClosed(String::from("197.0.0.1")));
+        assert_eq!(
+            error_msg,
+            CommsError::ConnectionClosed(String::from("197.0.0.1"))
+        );
 
         // Sending through a nonexistent connection should give an error
-        let result = client.send("10.0.0.1", Message { msg_type: MessageType::Post, load: String::new() });
+        let result = client.send(
+            "10.0.0.1",
+            Message {
+                msg_type: MessageType::Post,
+                load: String::new(),
+            },
+        );
         let error_msg = result.unwrap_err();
-        assert_eq!(error_msg, CommsError::ConnectionNotFound(String::from("10.0.0.1")));
+        assert_eq!(
+            error_msg,
+            CommsError::ConnectionNotFound(String::from("10.0.0.1"))
+        );
 
         Ok(())
     }
 
     #[test]
     fn test_client_count_closed() -> CommsResult<()> {
-        let to_open = ["197.0.0.1", "197.0.0.2", "197.0.0.3", "197.0.0.4", "197.0.0.5"];
+        let to_open = [
+            "197.0.0.1",
+            "197.0.0.2",
+            "197.0.0.3",
+            "197.0.0.4",
+            "197.0.0.5",
+        ];
         let to_halt = ["197.0.0.1", "197.0.0.3"];
 
         let mut client = Client::new(String::from("localhost"));
 
-        to_open.iter().for_each(|&addr| client.open(addr, Server::new(addr.to_string(), 1)).unwrap());
+        to_open
+            .iter()
+            .for_each(|&addr| client.open(addr, Server::new(addr.to_string(), 1)).unwrap());
 
         for addr in to_halt {
-            client.send(addr, Message { msg_type: MessageType::Post, load: String::from("Push the limit") })?;
-            client.send(addr, Message { msg_type: MessageType::Post, load: String::from("Too much") }).expect_err("Client should halt now");
+            client.send(
+                addr,
+                Message {
+                    msg_type: MessageType::Post,
+                    load: String::from("Push the limit"),
+                },
+            )?;
+            client
+                .send(
+                    addr,
+                    Message {
+                        msg_type: MessageType::Post,
+                        load: String::from("Too much"),
+                    },
+                )
+                .expect_err("Connection should close now");
         }
 
         assert_eq!(client.count_closed(), 2);
