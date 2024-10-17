@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 type CommsResult<T> = Result<T, CommsError>;
 
@@ -41,9 +41,9 @@ struct Message {
     load: String,
 }
 
-impl Message {
-    fn content(&self) -> String {
-        format!("{}\n{}", self.msg_type.header(), self.load)
+impl Display for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}\n{}", self.msg_type.header(), self.load)
     }
 }
 
@@ -122,7 +122,7 @@ impl Server {
     // Upon receiving a GET request, the server should respond
     // with the GetCount response containing the number of received POST requests.
     fn receive(&mut self, msg: Message) -> CommsResult<Response> {
-        eprintln!("{} received:\n{}", self.name, msg.content());
+        eprintln!("{} received:\n{}", self.name, msg);
 
         todo!()
     }
