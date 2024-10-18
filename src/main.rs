@@ -102,7 +102,6 @@ enum Response {
     GetCount(u32),
 }
 
-
 #[derive(Clone)]
 struct Server {
     name: String,
@@ -220,7 +219,7 @@ mod tests {
 
         let conn = client.connections.get("197.0.0.1").unwrap();
         match conn {
-            &Connection::Open(ref server) => {
+            Connection::Open(server) => {
                 assert_eq!(server.connected_client, Some("localhost".to_string()))
             }
             _ => panic!(),
